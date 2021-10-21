@@ -1,15 +1,14 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const methodOverride = require('method-override'); //Also need app.use
-const catchAsync = require('./utils/catchAsync');
-const ExpressError = require('./utils/ExpressError');
 const ejsMate = require('ejs-mate'); //Needs app.engine below
-const Joi = require('joi');
-const {campgroundSchema, reviewSchema} = require('./schemas.js');
-const Campground = require('./models/campground');
-const Review = require('./models/review');
+const ExpressError = require('./utils/ExpressError');
+const methodOverride = require('method-override'); //Also need app.use
 
+const Joi = require('joi');
+
+const campgrounds = require('./routes/campgrounds')
+const reviews = require('./routes/reviews')
 
 // mongoose.connect('mongodb://localhost:27017/yelp-camp', {
 //     useNewUrlParser: true,
@@ -37,152 +36,21 @@ app.set('views', path.join(__dirname, 'views'))
 
 app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'));
+// app.use(express.static('public'))
+app.use(express.static(path.join(__dirname, 'public')))
 
-// We don't wanna use a app.use because it'll run on every route
-// We want them selectively appliied
-const validateCampground = (req, res, next) => {
-        // Second layer of prevention for things like PostMan, before we only had error handling for web-based requets 
-        // const campgroundSchema = Joi.object ({
-        //     campground: Joi.object({
-        //         title: Joi.string().required(),
-        //         price: Joi.number().required().min(0),
-        //         image: Joi.string().required(),
-        //         location: Joi.string().required(),
-        //         description: Joi.string().required()
-        //     }).required()
-        // })
-        //Moved to schemas.js
-        
-        // const result = campgroundSchema.validate(req.body);
-        // [object Object] Its an array so need to destructure
-    
-        const { error } = campgroundSchema.validate(req.body);
-    
-        if (error) {
-            const msg = error.details.map(el => el.message).join(',')
-            // throw new ExpressError(error.details, 400)
-            throw new ExpressError(msg , 400)
-        } else {
-            //This will let the move through the route handlers
-            next();
-        }
-    
-        // From Console 
-        // {
-        //     value: { campground: { title: 'Hey' } },
-        //     error: [Error [ValidationError]: "campground.price" is required] {
-        //       _original: { campground: [Object] },
-        //       details: [ [Object] ]
-        //     }
-        // }
-          
-        // console.log(result);
-}
+app.use('/campgrounds', campgrounds)
 
-//Considered Middlware
-const validateReview = (req, res, next) => {
-    const { error } = reviewSchema.validate(req.body);
-    console.log(error);
-    if (error) {
-        const msg = error.details.map(el => el.message).join(',')
-        // throw new ExpressError(error.details, 400)
-        throw new ExpressError(msg , 400)
-    } else {
-        //This will let the move through the route handlers
-        next();
-    }
-}
-
-
+//We don't get the :id route in the params thats why we have ot merge
+app.use('/campgrounds/:id/reviews', reviews )
 
 app.get('/', (req, res) => {
     // res.send('Hello from YELP CAMP')
     res.render('home')
 })
 
-app.get('/campgrounds', catchAsync(async (req, res) => {
-    const campgrounds = await Campground.find({});
-    res.render('campgrounds/index', { campgrounds })
-}))
-
-//This needs to come before :id otherwise it will treat /new as the id
-app.get('/campgrounds/new', (req, res) => {
-    res.render('campgrounds/new')
-})
-
-app.post('/campgrounds', validateCampground, catchAsync(async (req, res, next) => {
-    //This will not work down below because the req.body has not been parsed yet
-    //Needs: app.use(express.urlencoded({extended: true}))
-    //Output {"campground":{"title":"test","location":"test"}} Its in campground
-    // res.send(req.body);
-    // if(!req.body.campground) throw new ExpressError('Invalid Campground Data', 400); PRE JOI
 
 
-    const campground = new Campground(req.body.campground);
-    await campground.save();
-
-    //Make sure campgrounds is plural and matches one of the routes
-    res.redirect(`/campgrounds/${campground._id}`);
-
-
-}))
-
-//This is our showpage, populates reviews
-app.get('/campgrounds/:id', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id).populate('reviews');
-    console.log(campground);
-    res.render('campgrounds/show', { campground });
-}))
-
-app.get('/campgrounds/:id/edit', catchAsync(async (req, res) => {
-    // const { id } = req.params;
-    const campground = await Campground.findById(req.params.id)
-    res.render('campgrounds/edit', { campground });
-}))
-
-app.put('/campgrounds/:id', catchAsync(async (req, res) => {
-    // res.send('IT WORKED')
-    // if we see it worked in html form sending real put request through POST
-    //Check edit.ejs
-    //We make it to that put route with the POST request from edit.ejs
-    const { id } = req.params;
-    // Campground.findByIdAndUpdate(id, {title: 'asdfa', location: ''})
-    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground }, { new: true })
-    res.redirect(`/campgrounds/${campground._id}`);
-}))
-
-app.delete('/campgrounds/:id', catchAsync(async (req, res) => {
-    const { id } = req.params;
-    await Campground.findByIdAndDelete(id);
-    console.log("HI");
-    res.redirect('/campgrounds');
-}))
-
-//Show.ejs
-//Needs const Review = require('./models/review');
-app.post('/campgrounds/:id/reviews', validateReview, catchAsync(async (req, res) => {
-    // res.send('YOU MADE IT!!!')
-    const campground = await Campground.findById(req.params.id)
-    // review[rating]
-    const review = new Review(req.body.review);
-    //All under review[rating] 'review'
-    //in cmapground.js reviews array
-    campground.reviews.push(review);
-    await review.save();
-    await campground.save();
-    res.redirect(`/campgrounds/${campground._id}`);
-}))
-
-//Delete a review
-// <form action="/campgrounds/<%=campground._id%>/reviews/<%=review._id%>?_method=DELETE" method="POST">
-app.delete('/campgrounds/:id/reviews/:reviewId', catchAsync(async (req, res) => {
-    //Need to set up form because method override, delete form on show page fore each review
-    const { id, reviewId } = req.params;
-    await Campground.findByIdAndUpdate(id, {$pull: {reviews: reviewId}})
-    await Review.findByIdAndDelete(reviewId);
-
-    res.send("DELETE ME!!!")
-}))
 
 
 app.all('*', (req, res, next) => {
