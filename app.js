@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate'); //Needs app.engine below
+const session = require('express-session');
+const flash = require('connect-flash');
 const ExpressError = require('./utils/ExpressError');
 const methodOverride = require('method-override'); //Also need app.use
 
@@ -38,6 +40,30 @@ app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'));
 // app.use(express.static('public'))
 app.use(express.static(path.join(__dirname, 'public')))
+
+const sessionConfig = {
+    secret: 'thisshouldbeabettersecret!',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+        // secure: true
+        //For security reasons, it is default
+        httpOnly: true,
+        expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+        maxAge: 1000 * 60 * 60 * 24 * 7
+
+    }
+
+}
+app.use(session(sessionConfig))
+// npm i connect-flash
+app.use(flash());
+
+app.use((req, res, next ) => {
+    //In Boilerplate. This funciton is supposed to be a middleware that passes it on, need next
+    res.locals.success = req.flash('success');
+    next();
+})
 
 app.use('/campgrounds', campgrounds)
 

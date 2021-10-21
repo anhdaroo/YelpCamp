@@ -63,10 +63,11 @@ router.post('/', validateCampground, catchAsync(async (req, res, next) => {
     // res.send(req.body);
     // if(!req.body.campground) throw new ExpressError('Invalid Campground Data', 400); PRE JOI
 
-
+    
     const campground = new Campground(req.body.campground);
     await campground.save();
 
+    req.flash('success', 'Successfully made a new campground!')
     //Make sure campgrounds is plural and matches one of the routes
     res.redirect(`/campgrounds/${campground._id}`);
 
@@ -78,6 +79,8 @@ router.get('/:id', catchAsync(async (req, res) => {
     const campground = await Campground.findById(req.params.id).populate('reviews');
     console.log(campground);
     res.render('campgrounds/show', { campground });
+    //Can do this to get flash message res.render('campgrounds/show', { campground, msg: req.flash("success") });
+    
 }))
 
 router.get('/:id/edit', catchAsync(async (req, res) => {
