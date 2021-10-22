@@ -62,6 +62,7 @@ app.use(flash());
 app.use((req, res, next ) => {
     //In Boilerplate. This funciton is supposed to be a middleware that passes it on, need next
     res.locals.success = req.flash('success');
+    res.locals.error = req.flash('error');
     next();
 })
 

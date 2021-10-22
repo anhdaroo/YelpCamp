@@ -1,0 +1,35 @@
+<!-- role=alert for disability purposes  -->
+
+<% if (success && success.length) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= success %>
+            <!-- <%= console.dir(success) %> empty array  -->
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+
+
+<% } %>
+
+<% if (error && error.length) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= error %>
+            <!-- <%= console.dir(success) %> empty array  -->
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+
+
+<% } %>
+
+<!-- This is where we get the variables 
+    app.use((req, res, next ) => {
+    //In Boilerplate. This funciton is supposed to be a middleware that passes it on, need next
+    res.locals.success = req.flash('success');
+    res.locals.error = req.flash('error');
+    next();
+}) -->
