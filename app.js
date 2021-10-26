@@ -6,11 +6,16 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const ExpressError = require('./utils/ExpressError');
 const methodOverride = require('method-override'); //Also need app.use
-
 const Joi = require('joi');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const User = require('./models/user');
 
-const campgrounds = require('./routes/campgrounds')
-const reviews = require('./routes/reviews')
+const userRoutes = require('./routes/users')
+const campgroundRoutes = require('./routes/campgrounds')
+//Before was campgrounds
+const reviewRoutes = require('./routes/reviews')
+//Before was reviews
 
 // mongoose.connect('mongodb://localhost:27017/yelp-camp', {
 //     useNewUrlParser: true,
@@ -59,17 +64,41 @@ app.use(session(sessionConfig))
 // npm i connect-flash
 app.use(flash());
 
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate()));
+
+//How to store user/destore user in session
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
 app.use((req, res, next ) => {
     //In Boilerplate. This funciton is supposed to be a middleware that passes it on, need next
+    console.log(req.session);
+    res.locals.currentUser = req.user;
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
     next();
 })
 
-app.use('/campgrounds', campgrounds)
+// app.get('/fakeUser', async (req,res) => {
+//     const user = new User({email: 'colt@gmail.com', username: 'colt'})
+//     const newUser = await User.register(user, 'chicken');
+//     //hashes and stores password
+//     // newUser will return email, _id, username, salt, hash
+//     res.send(newUser);
+// })
+
+// /login - GET request for login FORM 
+// Post request /login - log you in 
+//register - GET request FORM
+// Post request /register - create a user 
+
+app.use('/', userRoutes)
+app.use('/campgrounds', campgroundRoutes)
 
 //We don't get the :id route in the params thats why we have ot merge
-app.use('/campgrounds/:id/reviews', reviews )
+app.use('/campgrounds/:id/reviews', reviewRoutes )
 
 app.get('/', (req, res) => {
     // res.send('Hello from YELP CAMP')
